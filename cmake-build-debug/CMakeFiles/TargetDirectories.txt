@@ -1,0 +1,3 @@
+/home/hadar/Public/OperationSystem/ex2/cmake-build-debug/CMakeFiles/ex2.dir
+/home/hadar/Public/OperationSystem/ex2/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/hadar/Public/OperationSystem/ex2/cmake-build-debug/CMakeFiles/rebuild_cache.dir
