@@ -6,66 +6,75 @@
 #include <unistd.h>
 #include <string.h>
 
-
-void only_chars(char *str) {
-    int count = 0, i;
-    for (i = 0; str[i]; i++) {
-        if (str[i] != ' ' && str[i] !='\n'){
-            str[count++] = str[i];
-        }
-    }
-    str[count] = '\0';
-}
-
 void close_files(int fd1, int fd2) {
     close(fd1);
     close(fd2);
 }
-void init_arr(char *arr) {
-    int i;
-    for (i =0 ; i < 200; i++){
-        arr[i] = '\0';
-    }
-}
 
 int main(int argc, char **argv) {
-    int fd1, fd2, size;
-    char buf1[200], buf2[200];
-    init_arr(buf1);
-    init_arr(buf2);
+    int fd1, fd2,b_num1,b_num2;
+    char* buf1 = NULL;
+    char* buf2 = NULL;
+
 
     if (argc != 3) {
         exit(0);
     }
     fd1 = open(argv[1], O_RDONLY);
-    fd2 = open(argv[2], O_RDONLY);
-    if (fd1 < 0 || fd2 < 0) {
+    if (fd1 < 0) {
         exit(0);
     }
-    read(fd1,buf1, 200);
-    read(fd2, buf2,200);
-    int a = strcmp(buf1,buf2);
-    if (strcmp(buf1,buf2) == 0) {
-        close_files(fd1,fd2);
-        return 1;
+    fd2 = open(argv[2], O_RDONLY);
+    if (fd2 < 0) {
+        close(fd1);
+        exit(0);
     }
-    else {
-        only_chars(buf1);
-        only_chars(buf2);
-        //check if different
-        if (strlen(buf1) != strlen(buf2)) {
+
+    b_num1 = read(fd1,&buf1, 1);
+    b_num2 = read(fd2, &buf2,1);
+    // identical
+    while (buf1 == buf2 ) {
+        b_num1 = read(fd1,&buf1, 1);
+        b_num2 = read(fd2, &buf2,1);
+        if (b_num1 == 0 && b_num2 == 0) {
+            close_files(fd1,fd2);
+            return 1;
+        }
+    }
+
+    //if this code run - could be only alike 3 or diff 2
+    while(1) {
+        // different chars that are not space or \n
+        if((buf1 != buf2) && (buf1 != ' ') && (buf2 != ' ') && (buf1 != '\n') && (buf2 != '\n') && (buf1+32 != buf2)
+            && (buf1-32 != buf2)) {
+                close_files(fd1,fd2);
+                return 2;
+         }
+        // space or \n in buf1 - moving on to next byte
+        if ((buf1 != buf2) && (buf1 == ' ' || buf1 == '\n')) {
+            b_num1 = read(fd1,&buf1, 1);
+            continue;
+        }
+        // space or \n in buf2- moving on to next byte
+        if ((buf1 != buf2) && (buf2 == ' ' || buf2 == '\n')) {
+            b_num2 = read(fd2, &buf2,1);
+            continue;
+        }
+
+        // we reached the end of one of the files
+        if ((b_num1 == 0 && b_num2 != 0) || (b_num2 == 0 && b_num1 != 0)){
             close_files(fd1,fd2);
             return 2;
         }
-        // check if alike
-        else{
-            int i;
-            for(i=0;i< strlen(buf1); i++){
-                if (buf1[i] != buf2[i] && buf1[i]+32 != buf2[i] && buf1[i]-32 != buf2[i]){
-                    return 2;
-                }
-            }
+
+        // we reached the end of both files
+        if (b_num1 == 0 && b_num2 == 0) {
+            close_files(fd1,fd2);
             return 3;
         }
+
+        b_num1 = read(fd1,&buf1, 1);
+        b_num2 = read(fd2, &buf2,1);
     }
+
 }
