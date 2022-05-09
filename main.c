@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
 
     //if this code run - could be only alike 3 or diff 2
     while(1) {
-        // different chars that are not space or \n
+        // different chars that are not space or \n or capital lower case
         if((buf1 != buf2) && (buf1 != ' ') && (buf2 != ' ') && (buf1 != '\n') && (buf2 != '\n') && (buf1+32 != buf2)
             && (buf1-32 != buf2)) {
                 close_files(fd1,fd2);
