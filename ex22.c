@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <dirent.h>
+#include <sys/wait.h>
 
 // read 3 lines, make results.csv at start
 
@@ -22,7 +23,8 @@ void read_line_to_arr(char* buf, char* path, int fd) {
     }
     path[i] = '\0';
 }
-
+char* find_c_file(char* studentDir);
+void compile_c_file(char* c_file);
 int main(int argc, char **argv) {
     if (argc !=2) {
         exit(1);
@@ -55,7 +57,6 @@ int main(int argc, char **argv) {
         exit(1);
     }
     while ( (pDirent = readdir(pDir)) != NULL) {
-        printf("%s\n",pDirent->d_name);
         stat(pDirent->d_name, &stat_p);
         if((S_ISDIR(stat_p.st_mode)) && strcmp(pDirent->d_name, ".") && strcmp(pDirent->d_name, "..")){
             students_num++;
@@ -80,11 +81,19 @@ int main(int argc, char **argv) {
     }
     close(fd_result);
 
-    //for each student, get inside his dir, gcc .c , input to his a.out, write its output, compare to our , give grade
+    //for each student, get inside his dir, gcc his  .c, input to his a.out, write its output, compare to our, give grade
     int s = chdir(path_line1);
-    int j;
+    int j, pid;
+    char* c_file;
     for (j = 0; j <= students_num; j++) {
-        int f= chdir(student[j]);
+        c_file = find_c_file(student[j]);
+        //get inside directory of c file
+        int d = chdir(student[j]);
+        //compile gcc file
+        if (c_file == NULL) {
+            continue;
+        }
+        compile_c_file(c_file)
 
 
 
@@ -93,19 +102,44 @@ int main(int argc, char **argv) {
 
 
 
-
-
-        chdir("..");
     }
 
 
-
-
-
-
-
-
-
-
     return 1;
+}
+char* find_c_file(char* studentDir) {
+    DIR *pDir;
+    struct dirent *pDirent;
+    struct stat stat_p;
+    if ( (pDir = opendir(studentDir)) == NULL) {
+        exit(1);
+    }
+
+    // finding c file
+    while ( (pDirent = readdir(pDir)) != NULL) {
+        stat(pDirent->d_name, &stat_p);
+        if ((pDirent->d_name[strlen(pDirent->d_name) -2] == '.') && (pDirent->d_name[strlen(pDirent->d_name) -1] == 'c')){
+            return pDirent->d_name;
+        }
+        close(pDir);
+    }
+    return NULL;
+}
+void compile_c_file(char* c_file) {
+    int pid;
+    char* compileArg[3];
+    compileArg[0] = "gcc";
+    compileArg[1] = c_file;
+    compileArg[2] = NULL;
+
+    pid = fork();
+    if (pid < 0 ){
+        exit(1);
+    }
+    else if (pid == 0) {
+        execvp(compileArg[0],compileArg);
+    }
+    else {
+        wait(&pid);
+    }
 }
