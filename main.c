@@ -44,6 +44,18 @@ int main(int argc, char **argv) {
 
     //if this code run - could be only alike 3 or diff 2
     while(1) {
+        // we reached the end of one of the files
+        if ((b_num1 == 0 && b_num2 != 0) || (b_num2 == 0 && b_num1 != 0)){
+            //last char is whitespace char
+            if ((buf1 == ' ') || (buf2 == ' ') || (buf1 == '\n') || (buf2 == '\n')){
+                close_files(fd1,fd2);
+                return 3;
+            }
+            else {
+                close_files(fd1,fd2);
+                return 2;
+            }
+        }
         // different chars that are not space or \n or capital lower case
         if((buf1 != buf2) && (buf1 != ' ') && (buf2 != ' ') && (buf1 != '\n') && (buf2 != '\n') && (buf1+32 != buf2)
             && (buf1-32 != buf2)) {
@@ -61,17 +73,13 @@ int main(int argc, char **argv) {
             continue;
         }
 
-        // we reached the end of one of the files
-        if ((b_num1 == 0 && b_num2 != 0) || (b_num2 == 0 && b_num1 != 0)){
-            close_files(fd1,fd2);
-            return 2;
-        }
-
         // we reached the end of both files
         if (b_num1 == 0 && b_num2 == 0) {
             close_files(fd1,fd2);
             return 3;
         }
+
+
 
         b_num1 = read(fd1,&buf1, 1);
         b_num2 = read(fd2, &buf2,1);
