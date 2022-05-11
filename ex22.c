@@ -105,6 +105,8 @@ int main(int argc, char **argv) {
         int value_execute = execute_C_file(fd_input);
         int grade_indication = compare_outputs(path_line3,main_path, curr_path);
         assign_grade(student[j],p,grade_indication);
+        remove("output.txt");
+        remove("a.out");
 
         chdir("..");
 
@@ -142,7 +144,7 @@ int compare_outputs(char correct_output_path[], char main_path[], char student_p
     strcpy(output_path, student_path);
     strcat(output_path,"/output.txt");
 
-    char *compareArg[4] = {"./comp.out", correct_output_path, student_path, NULL};
+    char *compareArg[4] = {"./comp.out", correct_output_path, output_path, NULL};
     pid = fork();
     if (pid < 0){
         exit(-1);
@@ -153,7 +155,7 @@ int compare_outputs(char correct_output_path[], char main_path[], char student_p
     }
     else {
         int status;
-        waitpid(pid, &status,0);
+        wait(&status);
         chdir(student_path);
         if(WIFEXITED(status)){
             return WEXITSTATUS(status);

@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    //if this code run - could be only alike 3 or diff 2
+    //if this code run- could be only alike 3 or diff 2
     while(1) {
         // we reached the end of one of the files
         if ((b_num1 == 0 && b_num2 != 0) || (b_num2 == 0 && b_num1 != 0)){
