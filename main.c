@@ -33,6 +33,7 @@ int main(int argc, char **argv) {
     b_num1 = read(fd1,&buf1, 1);
     b_num2 = read(fd2, &buf2,1);
     // identical
+
     while (buf1 == buf2 ) {
         b_num1 = read(fd1,&buf1, 1);
         b_num2 = read(fd2, &buf2,1);
@@ -48,11 +49,10 @@ int main(int argc, char **argv) {
     while(1) {
         do {
             b_num1 = read(fd1,&buf1,1);
-
         }while ((buf1 == ' ' || buf1 == '\n') && b_num1 );
+
         do {
             b_num2 = read(fd2,&buf2,1);
-
         }while ((buf2 == ' ' || buf2 == '\n') && b_num2);
 
         if (!b_num1 && !b_num2){
