@@ -7,34 +7,34 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/wait.h>
+#define MAX_CHAR 150
 
-// read 3 lines, make results.csv at start
-
-//read the file in argv[1] make sure to save all 3 lines
-// 1st line is path to folder with folders , we get inside each folder gcc to C program
-// then we run the gcc with the 2nd line in cfg, write the output and comparing it with ex21
-// we will make results.csv to save grades for each folders name/
-struct students {
+struct Students {
     char name[150];
     int grade;
     char comment[10];
 };
 void read_line_to_arr(char* buf, char* path, int fd);
 char* find_c_file(char* studentDir);
-void compile_c_file(char* c_file);
+int compile_c_file(char* c_file, int fd_error);
 int execute_C_file(int fd_input);
 int compare_outputs(char correct_output_path[], char main_path[], char student_path[]);
+void assign_grade(char *string, struct Students* pointer, int indication);
+void write_to_CSV(int fd_result, const struct Students *students, int count);
+void remove_temp_files();
 
-void assign_grade(char *string, struct students* pointer, int indication);
+void check_path(char path[], char line1[], char line2[], char line3[]);
 
 int main(int argc, char **argv) {
     if (argc !=2) {
         exit(1);
     }
 
-    char path_line1[150], path_line2[150], path_line3[150], *byte_buf = NULL,main_path[150], curr_path[150];
-    int fd_cfg, students_num=0,fd_result, fd_input, fd_correct_output;
-    getcwd(main_path,150);
+    char path_line1[MAX_CHAR], path_line2[MAX_CHAR], path_line3[MAX_CHAR], *byte_buf = NULL,main_path[MAX_CHAR],
+        curr_path[MAX_CHAR];
+    int fd_cfg, students_num=0,fd_result, fd_input;
+    getcwd(main_path,MAX_CHAR);
+
     fd_cfg = open(argv[1], O_RDONLY);
     if (fd_cfg < 0) {
         exit(0);
@@ -43,14 +43,11 @@ int main(int argc, char **argv) {
     read_line_to_arr(byte_buf, path_line1,fd_cfg);
     read_line_to_arr(byte_buf, path_line2,fd_cfg);
     read_line_to_arr(byte_buf, path_line3,fd_cfg);
+    check_path(main_path,path_line1,path_line2,path_line3);
     close(fd_cfg);
 
-    //make grades file
-    fd_result = open("results.csv",O_WRONLY | O_CREAT  , S_IRUSR);
     fd_input = open(path_line2, O_RDONLY);
-    if(fd_result < 0) {
-        exit(1);
-    }
+
 
     // check number of students' directories
     DIR *pDir;
@@ -68,7 +65,7 @@ int main(int argc, char **argv) {
     }
     close(fd_result);
     char *student[students_num+1];
-    struct students students[students_num+1];
+    struct Students students[students_num+1];
     int i = 0;
 
     // assign name of directories to char* student[]
@@ -84,40 +81,114 @@ int main(int argc, char **argv) {
         close(pDir);
     }
     close(fd_result);
-
+    int fd_error = open("errors.txt", O_CREAT | O_WRONLY, 0777);
     //for each student, get inside his dir, compile his .c, input to his a.out, write its output, compare to our, give grade
-    int s = chdir(path_line1);
+    chdir(path_line1);
     int j, pid;
     char* c_file;
+
     for (j = 0; j <= students_num; j++) {
-        struct students* p = &students[j];
+        struct Students* p = &students[j];
         c_file = find_c_file(student[j]);
         //get inside directory of c file
-        int d = chdir(student[j]);
+        chdir(student[j]);
         //compile gcc file
         if (c_file == NULL) {
             chdir("..");
             assign_grade(student[j], p, 0);
             continue;
         }
-        compile_c_file(c_file);
-        getcwd(curr_path,150);
+        int compile_val = compile_c_file(c_file, fd_error);
+        if ( compile_val == -1) {
+            assign_grade(student[j], p, -1);
+            chdir("..");
+            continue;
+        }
+
+        getcwd(curr_path,MAX_CHAR);
         int value_execute = execute_C_file(fd_input);
         int grade_indication = compare_outputs(path_line3,main_path, curr_path);
         assign_grade(student[j],p,grade_indication);
-        remove("output.txt");
-        remove("a.out");
 
         chdir("..");
 
     }
+
+    chdir(main_path);
+    write_to_CSV(fd_result, students, students_num);
+    close(fd_error);
+    close(fd_result);
     close(fd_input);
 
 
     return 1;
 }
+int isFile(char* path) {
+    struct stat stat_p;
+    if (stat(path, &stat_p) != 0){
+        return 0;
+    }
+    return S_ISREG(stat_p.st_mode);
+}
+int isDirectory(char* path) {
+    struct stat stat_p;
+    if (stat(path, &stat_p) != 0){
+        return 0;
+    }
+    return S_ISDIR(stat_p.st_mode);
+}
+void check_path(char main_path[150], char* path1, char* path2, char* path3) {
+    char tmp[MAX_CHAR];
+    strcpy(tmp, main_path);
+     if (path1[0] != '/') {
+         strcat(tmp,"/");
+         strcat(tmp,path1);
+         strcpy(path1,tmp);
+     }
+    strcpy(tmp, main_path);
+     if (path2[0] != '/') {
+         strcat(tmp,"/");
+         strcat(tmp,path2);
+         strcpy(path2,tmp);
+     }
+    strcpy(tmp, main_path);
+    if (path3[0] != '/') {
+        strcat(tmp,"/");
+        strcat(tmp,path3);
+        strcpy(path3,tmp);
+    }
+    if(!isDirectory(path1)) {
+        write(STDOUT_FILENO,"Not a valid directory",21);
+        exit(-1);
+    }
+    if(!isFile(path2)){
+        write(STDOUT_FILENO,"Input file not exist",20);
+        exit(-1);
+    }
+    if(!isFile(path3)){
+        write(STDOUT_FILENO,"Output file not exist",20);
+        exit(-1);
+    }
 
-void assign_grade(char *string, struct students* pointer, int indication) {
+
+}
+
+void remove_temp_files() {
+    remove("output.txt");
+    remove("a.out");
+}
+void write_to_CSV(int fd_result, const struct Students *students, int count) {
+    int fd = open("results.csv",O_CREAT | O_RDWR | O_TRUNC, 0666);
+    int i;
+    for( i = 0; i <= count; i++) {
+        char line[MAX_CHAR];
+        sprintf(line, "%s,%d,%s", students[i].name,students[i].grade,students[i].comment);
+        write(fd,line,strlen(line));
+    }
+}
+
+void assign_grade(char *string, struct Students* pointer, int indication) {
+    remove_temp_files();
     strcpy(pointer->name, string);
     if (indication == 1 ){
         pointer->grade = 100;
@@ -135,11 +206,15 @@ void assign_grade(char *string, struct students* pointer, int indication) {
         pointer->grade = 0;
         strcpy(pointer->comment,"NO_C_FILE\n");
     }
+    else if (indication == -1){
+        pointer->grade = 10;
+        strcpy(pointer->comment,"COMPILATION_ERROR\n");
+    }
 }
 
 int compare_outputs(char correct_output_path[], char main_path[], char student_path[]) {
     chdir(main_path);
-    char output_path[150];
+    char output_path[MAX_CHAR];
     int pid;
     strcpy(output_path, student_path);
     strcat(output_path,"/output.txt");
@@ -168,11 +243,14 @@ int compare_outputs(char correct_output_path[], char main_path[], char student_p
 void read_line_to_arr(char* buf, char* path, int fd) {
     int i=0, byte;
     byte = read(fd,&buf,1);
-    while (buf != '\n') {
+    while (buf != '\n' || byte == -1) {
         path[i++] = buf;
         byte = read(fd,&buf,1);
     }
     path[i] = '\0';
+    if (byte == -1) {
+        write(STDOUT_FILENO,"Error in: READ", 14);
+    }
 }
 char* find_c_file(char* studentDir) {
     DIR *pDir;
@@ -185,14 +263,15 @@ char* find_c_file(char* studentDir) {
     // finding c file
     while ( (pDirent = readdir(pDir)) != NULL) {
         stat(pDirent->d_name, &stat_p);
-        if ((pDirent->d_name[strlen(pDirent->d_name) -2] == '.') && (pDirent->d_name[strlen(pDirent->d_name) -1] == 'c')){
+        if ((pDirent->d_name[strlen(pDirent->d_name) -2] == '.')
+            && (pDirent->d_name[strlen(pDirent->d_name) -1] == 'c')){
             return pDirent->d_name;
         }
         close(pDir);
     }
     return NULL;
 }
-void compile_c_file(char* c_file) {
+int compile_c_file(char* c_file,int fd_error) {
     int pid;
     char* compileArg[3] = {"gcc", c_file, NULL};
     pid = fork();
@@ -200,11 +279,20 @@ void compile_c_file(char* c_file) {
         exit(1);
     }
     else if (pid == 0) {
+        dup2(fd_error,2);
         execvp(compileArg[0],compileArg);
         //check if failed
     }
     else {
-        wait(&pid);
+        int status;
+        waitpid(pid, &status,0);
+        if (WIFEXITED(status)) {
+            if(WEXITSTATUS(status) == 1) {
+                return -1;
+            }
+            return 0;
+        }
+
     }
 }
 int execute_C_file(int fd_input) {
@@ -232,11 +320,6 @@ int execute_C_file(int fd_input) {
             kill(pid,0);
             return -1;
         }
-//        if (WIFEXITED(status)) {
-//            if (WEXITSTATUS(status)== 1){
-//
-//            }
-//        }
     }
 
 
