@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
     char check_path[150];
     getcwd(check_path,150);
 
-    int j, pid;
+    int j;
     char* c_file;
 
     for (j = 0; j < students_num; j++) {
