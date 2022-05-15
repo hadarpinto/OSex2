@@ -8,16 +8,17 @@
 #include <dirent.h>
 #include <sys/wait.h>
 #define MAX_CHAR 150
+#define DIRECTORY 4
 
 struct Students {
-    char name[150];
+    char name[MAX_CHAR];
     int grade;
-    char comment[50];
+    char comment[MAX_CHAR];
 };
 void read_line_to_arr(char* buf, char* path, int fd);
 char* find_c_file(char* studentDir);
 int compile_c_file(char* c_file, int fd_error);
-int execute_C_file(int fd_input, int fd_error);
+void execute_C_file(int fd_input, int fd_error);
 int compare_outputs(char correct_output_path[], char main_path[], char student_path[]);
 void assign_grade(char *string, struct Students* pointer, int indication);
 void write_to_CSV(const struct Students *students, int count);
@@ -31,13 +32,13 @@ int main(int argc, char **argv) {
     }
 
     char path_line1[MAX_CHAR], path_line2[MAX_CHAR], path_line3[MAX_CHAR], *byte_buf = NULL,main_path[MAX_CHAR],
-        curr_path[MAX_CHAR];
+            curr_path[MAX_CHAR];
     int fd_cfg, students_num=0, fd_input;
     getcwd(main_path,MAX_CHAR);
     strcat(main_path,"/");
     fd_cfg = open(argv[1], O_RDONLY);
     if (fd_cfg < 0) {
-       return 0;
+        return 0;
     }
 
     read_line_to_arr(byte_buf, path_line1,fd_cfg);
@@ -58,7 +59,7 @@ int main(int argc, char **argv) {
     }
     while ( (pDirent = readdir(pDir)) != NULL) {
         stat(pDirent->d_name, &stat_p);
-        if ((pDirent->d_type == 4) && strcmp(pDirent->d_name, ".") && strcmp(pDirent->d_name, "..")
+        if ((pDirent->d_type == DIRECTORY) && strcmp(pDirent->d_name, ".") && strcmp(pDirent->d_name, "..")
             && (strcmp(pDirent->d_name,".DS_Store")) ){
             students_num++;
         }
@@ -76,7 +77,7 @@ int main(int argc, char **argv) {
     }
     while ( (pDirent = readdir(pDir)) != NULL) {
         stat(pDirent->d_name, &stat_p);
-        if ((pDirent->d_type == 4) && strcmp(pDirent->d_name, ".") && strcmp(pDirent->d_name, "..")
+        if ((pDirent->d_type == DIRECTORY) && strcmp(pDirent->d_name, ".") && strcmp(pDirent->d_name, "..")
             && (strcmp(pDirent->d_name,".DS_Store")) ) {
             student[i++] = pDirent->d_name;
         }
@@ -86,9 +87,6 @@ int main(int argc, char **argv) {
     int fd_error = open("errors.txt", O_CREAT | O_WRONLY, 0777);
     //for each student, get inside his dir, compile his .c, input to his a.out, write its output, compare to our, give grade
     chdir(path_line1);
-
-    char check_path[150];
-    getcwd(check_path,150);
 
     int j;
     char* c_file;
@@ -101,10 +99,6 @@ int main(int argc, char **argv) {
         }
         //get inside directory of c file
         chdir(student[j]);
-
-        getcwd(check_path,150);
-
-
         //compile gcc file
         if (c_file == NULL) {
             chdir("..");
@@ -120,7 +114,7 @@ int main(int argc, char **argv) {
         }
 
         getcwd(curr_path,MAX_CHAR);
-        int value_execute = execute_C_file(fd_input, fd_error);
+        execute_C_file(fd_input, fd_error);
         int grade_indication = compare_outputs(path_line3,main_path, curr_path);
         assign_grade(student[j],p,grade_indication);
         chdir("..");
@@ -128,7 +122,6 @@ int main(int argc, char **argv) {
     }
 
     chdir(main_path);
-    getcwd(check_path,150);
     write_to_CSV(students, students_num);
     close(fd_error);
     close(fd_input);
@@ -149,20 +142,20 @@ int isDirectory(char* path) {
     }
     return S_ISDIR(stat_p.st_mode);
 }
-void check_path(char main_path[150], char* path1, char* path2, char* path3) {
+void check_path(char main_path[], char* path1, char* path2, char* path3) {
     char tmp[MAX_CHAR];
     strcpy(tmp, main_path);
-     if (path1[0] != '/') {
-         strcat(tmp,"/");
-         strcat(tmp,path1);
-         strcpy(path1,tmp);
-     }
+    if (path1[0] != '/') {
+        strcat(tmp,"/");
+        strcat(tmp,path1);
+        strcpy(path1,tmp);
+    }
     strcpy(tmp, main_path);
-     if (path2[0] != '/') {
-         strcat(tmp,"/");
-         strcat(tmp,path2);
-         strcpy(path2,tmp);
-     }
+    if (path2[0] != '/') {
+        strcat(tmp,"/");
+        strcat(tmp,path2);
+        strcpy(path2,tmp);
+    }
     strcpy(tmp, main_path);
     if (path3[0] != '/') {
         strcat(tmp,"/");
@@ -261,9 +254,6 @@ void read_line_to_arr(char* buf, char* path, int fd) {
         byte = read(fd,&buf,1);
     }
     path[i] = '\0';
-    if (byte == -1) {
-        write(STDOUT_FILENO,"Error in: READ", 14);
-    }
 }
 char* find_c_file(char* studentDir) {
     DIR *pDir;
@@ -308,7 +298,7 @@ int compile_c_file(char* c_file,int fd_error) {
 
     }
 }
-int execute_C_file(int fd_input, int fd_error) {
+void execute_C_file(int fd_input, int fd_error) {
     int pid;
     lseek(fd_input,0,SEEK_SET);
     char* executeArg[2] = {"./a.out", NULL};
@@ -324,7 +314,6 @@ int execute_C_file(int fd_input, int fd_error) {
         dup2(fd_output, STDOUT_FILENO);
         dup2(fd_error,2);
         execvp(executeArg[0], executeArg);
-        return -1;
 
     }
     else {
@@ -332,9 +321,7 @@ int execute_C_file(int fd_input, int fd_error) {
         close(fd_output);
         if(!waitpid(pid, &status, 0)){
             kill(pid,0);
-            return -1;
         }
     }
-
 
 }
